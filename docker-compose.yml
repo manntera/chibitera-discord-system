@@ -12,6 +12,6 @@ services:
     image: codercom/code-server
     restart: always
     ports:
-      - "8443:8443"
+      - "8080:8080"
     volumes:
       - ./app:/home/coder/project
