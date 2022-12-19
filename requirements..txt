@@ -1,5 +1,0 @@
-pip
-setuptools
-numpy
-discord.py[voice]
-flask
