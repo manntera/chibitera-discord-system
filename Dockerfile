@@ -11,9 +11,6 @@ ENV TZ JST-9
 ENV TERM xterm
 
 RUN apt-get install -y vim less
-RUN pip install --upgrade pip
-RUN pip install --upgrade setuptools
-RUN python -m pip install numpy
-RUN python -m pip install discord.py
+RUN python -m pip install -Ur requirements.txt
 ADD app /opt
 CMD ["python", "opt/main.py"]
