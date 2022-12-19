@@ -15,4 +15,5 @@ RUN pip install --upgrade pip
 RUN pip install --upgrade setuptools
 RUN python -m pip install numpy
 RUN python -m pip install discord.py
+ADD app /opt
 CMD ["python", "opt/main.py"]
