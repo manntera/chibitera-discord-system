@@ -1,4 +1,5 @@
 import discord
+import http.server
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -18,3 +19,11 @@ async def on_message(message):
 
 # 後でtokenをどうにかする
 client.run('MTAxMzE2NjMwNjgzMDM0MDEzNw.GGDFdB.Lb8YPeN973-0EL4j_7gYq6Vvu9LuzJdDHdWk9Y')
+
+PORT = 8000
+
+Handler = http.server.SimpleHTTPRequestHandler
+
+with http.server.HTTPServer(("", PORT), Handler) as httpd:
+    print("serving at port", PORT)
+    httpd.serve_forever()
