@@ -1,4 +1,5 @@
 import discord
+from flask import Flask
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -21,4 +22,16 @@ async def on_message(message):
     if message.content.startswith('$hello'):
         await message.channel.send('Hello!')
 
+
+print("1")
+app = Flask(__name__)
+print("2")
 client.run(TOKEN)
+print ("3")
+
+@app.route('/', methods=['###'])
+def index():
+    return 'hello world'
+
+if __name__ == '__main__':
+    app.run(host="0.0.0.0", port=8080, debug=False)
