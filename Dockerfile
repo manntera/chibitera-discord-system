@@ -17,5 +17,5 @@ RUN python -m pip install numpy
 RUN python -m pip install discord.py
 
 RUN pwd
-RUN ls -la /root/opt
+RUN ls -la /home
 CMD ["python", "/root/opt/main.py"]
