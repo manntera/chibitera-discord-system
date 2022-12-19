@@ -15,4 +15,4 @@ RUN pip install --upgrade pip
 RUN pip install --upgrade setuptools
 RUN python -m pip install numpy
 RUN python -m pip install discord.py
-CMD ["python", "/root/opt/main.py"]
+CMD ["python", "app/main.py"]
