@@ -16,6 +16,6 @@ RUN pip install --upgrade setuptools
 RUN python -m pip install numpy
 RUN python -m pip install discord.py
 
-RUN pwd
-RUN ls -la
+CMD ["pwd",]
+CMD ["ls", "-la"]
 CMD ["python", "/root/opt/main.py"]
