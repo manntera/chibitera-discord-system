@@ -12,7 +12,7 @@ ENV TERM xterm
 
 RUN apt-get install -y vim less
 
-ADD app /opt
+ADD app /opt/app
 WORKDIR /opt
 RUN python -m pip install -Ur requirements.txt
-CMD ["python", "main.py"]
+CMD ["python", "app/main.py"]
