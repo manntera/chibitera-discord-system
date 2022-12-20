@@ -7,7 +7,7 @@ intents.message_content = True
 client = discord.Client(intents=intents)
 
 # 後でtokenをどうにかする
-TOKEN = os.environ['DISCORD_TOKEN']
+TOKEN = os.getenv('DISCORD_TOKEN_SECRET')
 
 @client.event
 async def on_ready():
