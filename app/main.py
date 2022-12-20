@@ -6,8 +6,17 @@ intents = discord.Intents.default()
 intents.message_content = True
 client = discord.Client(intents=intents)
 
-# 後でtokenをどうにかする
-TOKEN = os.getenv('DISCORD_TOKEN_SECRET')
+#AUTH_MESSAGE_ID = 744216836173725846
+AUTH_MESSAGE_ID = 1054854789877465158
+
+
+REACTION_TO_ROLE = {
+    744209790837850122: 587175233899724801, #デザイナー
+    744209790661820438: 587175050571022337, #プログラマー
+    832489218546335764: 832617526005071923, #サウンド
+    797122177794441248: 797121076827258890 #VTUBER
+}
+
 
 def exit(msg: str) -> None:
     """
@@ -28,7 +37,19 @@ def exit(msg: str) -> None:
     sys.exit()
 
 
-if TOKEN is None:
+# 後でtokenをどうにかする
+TOKEN = os.getenv('DISCORD_TOKEN_SECRET')
+
+#システム環境変数にTOKENが見つからなかった時に.envから読み取るようにする
+#requirements.txtに記載したpython-dotenvがインポートできなかった時に起動を中断
+#.envに記載が無い時も処理を中断
+#.envにXX="YY"と記載したとき、XXが変数名になる
+#TOKEN = os.getenv('XX')と記載したらYYを取得できる
+
+#XX is Noneとnot XXは同じ
+
+
+if not TOKEN:
     try:
         from dotenv import load_dotenv
     except ImportError:
@@ -36,8 +57,9 @@ if TOKEN is None:
 
     load_dotenv()
     TOKEN = os.getenv('DISCORD_TOKEN_SECRET')
+    print(".envからTOKENを取得しました。")
 
-    if TOKEN is None:
+    if not TOKEN:
         exit("TOKENが見つからなかったため、処理を中断しました。")
 
 
@@ -52,6 +74,40 @@ async def on_message(message):
     await message.channel.send(message.content)
     if message.content.startswith('$hello'):
         await message.channel.send('Hello!')
+
+
+@client.event
+async def on_raw_reaction_add(payload: discord.RawReactionActionEvent):
+    #リアクションを付けたメッセージのIDが指定したものじゃなければ処理を中断
+    if payload.message_id != AUTH_MESSAGE_ID: return
+
+    #GUILDオブジェクトを取得
+    guild = client.get_guild(payload.guild_id)
+
+    #カスタム絵文字じゃ無かったらそれ以降処理しない
+    if not payload.emoji.is_custom_emoji(): return
+
+    #押されたリアクションのIDが辞書のキーにあるか調べる
+    #もしあれば、対応したロールIDを取得する
+    if not (role_id := REACTION_TO_ROLE.get(payload.emoji.id)): return
+    
+    #取得したロールIDからロールオブジェクトを取得
+    role = guild.get_role(role_id)
+
+    if not role:
+        print(f"{role_id} がサーバーに見つかりませんでした。")
+        return
+
+    #たまーにpayload.memberがNoneになることがある
+    #Noneになったらリアクションを押したユーザーのIDを元にサーバーに入ってるメンバー一覧から押したユーザーを取得する
+    if not (member := payload.member):
+        member = guild.get_member(payload.user_id)
+
+    #取得したロールをリアクションを押したメンバーに付与する
+    await member.add_roles(role)
+
+
+
 
 keep_alive()
 client.run(TOKEN)
