@@ -3,3 +3,4 @@ setuptools
 numpy
 discord.py[voice]
 flask
+python-dotenv
