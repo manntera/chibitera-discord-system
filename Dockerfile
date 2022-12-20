@@ -9,6 +9,7 @@ ENV LANGUAGE ja_JP:ja
 ENV LC_ALL ja_JP.UTF-8
 ENV TZ JST-9
 ENV TERM xterm
+ENV DISCORD_TOKEN DISCORD_TOKEN_SECRET
 
 RUN apt-get install -y vim less
 
