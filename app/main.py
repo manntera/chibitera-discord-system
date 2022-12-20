@@ -1,3 +1,4 @@
+import os
 import discord
 from demo import keep_alive
 
