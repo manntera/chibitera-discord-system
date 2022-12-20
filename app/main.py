@@ -6,8 +6,8 @@ intents = discord.Intents.default()
 intents.message_content = True
 client = discord.Client(intents=intents)
 
-#AUTH_MESSAGE_ID = 744216836173725846
-AUTH_MESSAGE_ID = 1054854789877465158
+AUTH_MESSAGE_ID = 744216836173725846
+#AUTH_MESSAGE_ID = 1054854789877465158
 
 
 REACTION_TO_ROLE = {
