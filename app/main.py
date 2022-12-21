@@ -79,6 +79,10 @@ async def on_raw_reaction_add(payload: discord.RawReactionActionEvent):
 
     # GUILDオブジェクトを取得
     guild = client.get_guild(payload.guild_id)
+    # GuildChannelオブジェクトを取得
+    channel = guild.get_channel(payload.channel_id)
+    # Messageオブジェクトを取得
+    message = await channel.fetch_message(payload.message_id)
 
     # カスタム絵文字じゃ無かったらそれ以降処理しない
     if not payload.emoji.is_custom_emoji():
@@ -104,6 +108,8 @@ async def on_raw_reaction_add(payload: discord.RawReactionActionEvent):
     # 取得したロールをリアクションを押したメンバーに付与する
     await member.add_roles(role)
 
+    # リアクションを削除
+    await message.remove_reaction(payload.emoji, member)
 
 keep_alive()
 client.run(TOKEN)
