@@ -2,19 +2,6 @@ import os
 import discord
 from demo import keep_alive
 
-intents = discord.Intents.default()
-intents.message_content = True
-client = discord.Client(intents=intents)
-
-AUTH_MESSAGE_ID = 744216836173725846
-
-REACTION_TO_ROLE = {
-    744209790837850122: 587175233899724801, # デザイナー
-    744209790661820438: 587175050571022337, # プログラマー
-    832489218546335764: 832617526005071923, # サウンド
-    797122177794441248: 797121076827258890 # VTUBER
-}
-
 
 def exit(msg: str) -> None:
     """
@@ -32,10 +19,24 @@ def exit(msg: str) -> None:
     """
     print(msg)
     import sys
+
     sys.exit()
 
 
-TOKEN = os.getenv('DISCORD_TOKEN_SECRET')
+intents = discord.Intents.default()
+intents.message_content = True
+client = discord.Client(intents=intents)
+
+AUTH_MESSAGE_ID = 744216836173725846
+
+REACTION_TO_ROLE = {
+    744209790837850122: 587175233899724801,  # デザイナー
+    744209790661820438: 587175050571022337,  # プログラマー
+    832489218546335764: 832617526005071923,  # サウンド
+    797122177794441248: 797121076827258890,  # VTUBER
+}
+
+TOKEN = os.getenv("DISCORD_TOKEN_SECRET")
 
 # システム環境変数にTOKENが見つからなかった時に.envから読み取るようにする
 # .envに記載が無い時も処理を中断
@@ -49,7 +50,7 @@ if not TOKEN:
     from dotenv import load_dotenv
 
     load_dotenv()
-    TOKEN = os.getenv('DISCORD_TOKEN_SECRET')
+    TOKEN = os.getenv("DISCORD_TOKEN_SECRET")
     print(".envからTOKENを取得しました。")
 
     if not TOKEN:
@@ -58,32 +59,36 @@ if not TOKEN:
 
 @client.event
 async def on_ready():
-    print(f'We have logged in as {client.user}')
+    print(f"We have logged in as {client.user}")
+
 
 @client.event
 async def on_message(message: discord.Message):
     if message.author == client.user:
         return
     await message.channel.send(message.content)
-    if message.content.startswith('$hello'):
-        await message.channel.send('Hello!')
+    if message.content.startswith("$hello"):
+        await message.channel.send("Hello!")
 
 
 @client.event
 async def on_raw_reaction_add(payload: discord.RawReactionActionEvent):
     # リアクションを付けたメッセージのIDが指定したものじゃなければ処理を中断
-    if payload.message_id != AUTH_MESSAGE_ID: return
+    if payload.message_id != AUTH_MESSAGE_ID:
+        return
 
     # GUILDオブジェクトを取得
     guild = client.get_guild(payload.guild_id)
 
     # カスタム絵文字じゃ無かったらそれ以降処理しない
-    if not payload.emoji.is_custom_emoji(): return
+    if not payload.emoji.is_custom_emoji():
+        return
 
     # 押されたリアクションのIDが辞書のキーにあるか調べる
     # もしあれば、対応したロールIDを取得する
-    if not (role_id := REACTION_TO_ROLE.get(payload.emoji.id)): return
-    
+    if not (role_id := REACTION_TO_ROLE.get(payload.emoji.id)):
+        return
+
     # 取得したロールIDからロールオブジェクトを取得
     role = guild.get_role(role_id)
 
@@ -98,8 +103,6 @@ async def on_raw_reaction_add(payload: discord.RawReactionActionEvent):
 
     # 取得したロールをリアクションを押したメンバーに付与する
     await member.add_roles(role)
-
-
 
 
 keep_alive()
