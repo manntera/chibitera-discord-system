@@ -63,15 +63,6 @@ async def on_ready():
 
 
 @client.event
-async def on_message(message: discord.Message):
-    if message.author == client.user:
-        return
-    await message.channel.send(message.content)
-    if message.content.startswith("$hello"):
-        await message.channel.send("Hello!")
-
-
-@client.event
 async def on_raw_reaction_add(payload: discord.RawReactionActionEvent):
     # リアクションを付けたメッセージのIDが指定したものじゃなければ処理を中断
     if payload.message_id != AUTH_MESSAGE_ID:
@@ -110,6 +101,7 @@ async def on_raw_reaction_add(payload: discord.RawReactionActionEvent):
 
     # リアクションを削除
     await message.remove_reaction(payload.emoji, member)
+
 
 keep_alive()
 client.run(TOKEN)
