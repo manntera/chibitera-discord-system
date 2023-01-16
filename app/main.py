@@ -28,12 +28,14 @@ intents.message_content = True
 client = discord.Client(intents=intents)
 
 AUTH_MESSAGE_ID = 744216836173725846
+MEMBER_ROLE_ID = 618101618935857205
 
 REACTION_TO_ROLE = {
     744209790837850122: 587175233899724801,  # デザイナー
     744209790661820438: 587175050571022337,  # プログラマー
     832489218546335764: 832617526005071923,  # サウンド
     797122177794441248: 797121076827258890,  # VTUBER
+    800480624770154537: MEMBER_ROLE_ID,  # メンバー
 }
 
 TOKEN = os.getenv("DISCORD_TOKEN_SECRET")
@@ -81,14 +83,20 @@ async def on_raw_reaction_add(payload: discord.RawReactionActionEvent):
 
     # 押されたリアクションのIDが辞書のキーにあるか調べる
     # もしあれば、対応したロールIDを取得する
-    if not (role_id := REACTION_TO_ROLE.get(payload.emoji.id)):
+    if not (position_role_id := REACTION_TO_ROLE.get(payload.emoji.id)):
         return
 
     # 取得したロールIDからロールオブジェクトを取得
-    role = guild.get_role(role_id)
+    position_role = guild.get_role(position_role_id)
 
-    if not role:
-        print(f"{role_id} がサーバーに見つかりませんでした。")
+    if not position_role:
+        print(f"{position_role_id} がサーバーに見つかりませんでした。")
+        return
+
+    member_role = guild.get_role(MEMBER_ROLE_ID)
+
+    if not member_role:
+        print(f"{MEMBER_ROLE_ID}がサーバーに見つかりませんでした。")
         return
 
     # たまーにpayload.memberがNoneになることがある
@@ -97,7 +105,9 @@ async def on_raw_reaction_add(payload: discord.RawReactionActionEvent):
         member = guild.get_member(payload.user_id)
 
     # 取得したロールをリアクションを押したメンバーに付与する
-    await member.add_roles(role)
+
+    roles = [position_role, member_role]
+    await member.add_roles(roles)
 
     # リアクションを削除
     await message.remove_reaction(payload.emoji, member)
