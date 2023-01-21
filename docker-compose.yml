@@ -1,0 +1,12 @@
+version: "3"
+services:
+  chibitera:
+    restart: always
+    build: .
+    command: python main.py
+    working_dir: /chibitera
+    tty: true
+    volumes:
+      - ./app:/chibitera
+    env_file:
+      - ./app/.env
