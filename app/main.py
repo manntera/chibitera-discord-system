@@ -1,8 +1,6 @@
 from discord.ext import commands
 from discord import Intents
 
-from demo import keep_alive
-
 intents = Intents.default()
 intents.message_content = True
 
@@ -28,5 +26,4 @@ if __name__ == "__main__":
 
     TOKEN = os.getenv("DISCORD_TOKEN_SECRET")
     bot = Main()
-    keep_alive()
     bot.run(TOKEN)
