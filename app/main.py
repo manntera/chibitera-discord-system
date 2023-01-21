@@ -20,7 +20,7 @@ class Main(commands.Bot):
             print(module, "読み込み完了")
 
     async def on_ready(self):
-        print(f"{client.user}を起動しました。")
+        print(str(self.user), self.user.id, "起動完了")
 
 
 if __name__ == "__main__":
