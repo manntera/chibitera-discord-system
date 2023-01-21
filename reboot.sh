@@ -16,7 +16,8 @@ if [ "$GIT_OUTPUT_MESSAGE" != "$ALREADY_MESSAGE" ]; then
     if [[ "$GIT_OUTPUT_MESSAGE" =~ "error" ]]; then
         exit 1
     fi
-
+    docker-compose stop
+    docker-compose rm
     docker-compose up -d
     curl \
         -H "Content-Type: application/json" \
