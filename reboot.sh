@@ -1,5 +1,5 @@
 #!/bin/bash
-cd ~/project_dir
+cd ~/chibitera-dev
 
 GIT_OUTPUT_MESSAGE=`git pull`
 ALREADY_MESSAGE="Already up to date."
