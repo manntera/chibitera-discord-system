@@ -11,7 +11,6 @@ ENV TZ JST-9
 ENV TERM xterm
 
 RUN apt-get install -y vim less
-\
-COPY requirements.txt /chibitera
-WORKDIR /chibitera
+
+COPY requirements.txt /
 RUN pip install -Ur requirements.txt
