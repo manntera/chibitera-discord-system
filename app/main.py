@@ -3,9 +3,8 @@ from discord import Intents
 
 from demo import keep_alive
 
-intents = discord.Intents.default()
+intents = Intents.default()
 intents.message_content = True
-client = discord.Client(intents=intents)
 
 cogs = ["auth_system"]
 
