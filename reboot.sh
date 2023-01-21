@@ -21,7 +21,7 @@ if [ "$GIT_OUTPUT_MESSAGE" != "$ALREADY_MESSAGE" ]; then
     curl \
         -H "Content-Type: application/json" \
         -X POST \
-        -d "{\"content\": \"再起動しました。"}" \
+        -d "{\"content\": \"再起動しました。\"}" \
         $DISCORD_WEBHOOK_URL_REBOOT_LOG
 
 
