@@ -7,16 +7,16 @@ class Auth_System(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
+        self.auth_message_id = 744216836173725846
+        self.member_role_id = 618101618935857205
+
         self.reaction_to_role = {
             744209790837850122: 587175233899724801,  # デザイナー
             744209790661820438: 587175050571022337,  # プログラマー
             832489218546335764: 832617526005071923,  # サウンド
             797122177794441248: 797121076827258890,  # VTUBER
-            800480624770154537: MEMBER_ROLE_ID,  # メンバー
+            800480624770154537: self.member_role_id,  # メンバー
         }
-
-        self.auth_message_id = 744216836173725846
-        self.member_role_id = 618101618935857205
 
     @commands.Cog.listener("on_raw_reaction_add")
     async def auth_system_reaction_add(self, payload: RawReactionActionEvent):
