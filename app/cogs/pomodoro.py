@@ -32,7 +32,30 @@ class Pomodoro_Timer(commands.Cog):
 
     @commands.Cog.listener("on_voice_state_update")
     async def vc_exit(self, member: Member, before: VoiceState, after: VoiceState):
-        pass
+        # VCから退出したアカウントがBOTだったら弾く
+        if member.bot:
+            return
+
+        # ユーザーがVCから退出して無ければ
+        if not before.channel:
+            return
+
+        # ユーザーが退出したVCが作業部屋じゃなければ弾く
+        if before.channel.id != 1067009073247158392:
+            return
+
+        # ちびてらちゃんが作業部屋に参加して無ければ弾く
+        if member.guild.me not in before.channel:
+            return
+
+        members = [member for member in before.channel.members if not member.bot]
+
+        # BOTを除いてVCに誰かいれば弾く
+        if members:
+            return
+
+        # ちびてらちゃんをVCから切断
+        await member.guild.voice_client.disconnect(force=True)
 
 
 async def setup(bot):
