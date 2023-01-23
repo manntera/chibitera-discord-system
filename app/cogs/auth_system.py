@@ -26,7 +26,7 @@ class Auth_System(commands.Cog):
 
         """
         # リアクションを付けたメッセージのIDが指定したものじゃなければ処理を中断
-        if payload.message_id == self.auth_message_id:
+        if payload.message_id != self.auth_message_id:
             return
 
         # GUILDオブジェクトを取得
@@ -66,7 +66,7 @@ class Auth_System(commands.Cog):
         # 取得したロールをリアクションを押したメンバーに付与する
 
         roles = [position_role, member_role]
-        await member.add_roles(roles)
+        await member.add_roles(*roles)
 
         # リアクションを削除
         await message.remove_reaction(payload.emoji, member)
