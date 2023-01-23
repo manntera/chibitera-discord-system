@@ -42,7 +42,7 @@ class Auth_System(commands.Cog):
 
         # 押されたリアクションのIDが辞書のキーにあるか調べる
         # もしあれば、対応したロールIDを取得する
-        if payload.emoji.id not in self.reaction_to_role:
+        if not (position_role_id := self.reaction_to_role.get(payload.emoji.id)):
             return
 
         # 取得したロールIDからロールオブジェクトを取得
