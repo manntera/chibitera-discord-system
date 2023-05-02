@@ -1,5 +1,8 @@
-from discord.ext import commands
+import sys
+
+from config import TOKEN
 from discord import Intents
+from discord.ext import commands
 
 intents = Intents.default()
 intents.message_content = True
@@ -18,12 +21,21 @@ class Main(commands.Bot):
             print(module, "読み込み完了")
 
     async def on_ready(self):
+        # self.userがオプショナルになってたので
+        # self.userがNoneの場合は起動中止
+        if not self.user:
+            await self.close()
+            print("#######self.userがNoneのため起動を中止しました#############")
+            return
+
         print(str(self.user), self.user.id, "起動完了")
 
 
 if __name__ == "__main__":
-    import os
-
-    TOKEN = os.getenv("DISCORD_TOKEN_SECRET")
     bot = Main()
+
+    if not TOKEN:
+        print("#######TOKENが見つからないため、処理をを中止しました#############")
+        sys.exit()
+
     bot.run(TOKEN)
