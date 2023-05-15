@@ -39,7 +39,7 @@ class Auth_System(commands.Cog):
 
         # 押されたリアクションのIDが辞書のキーにあるか調べる
         # もしあれば、対応したロールIDを取得する
-
+        
         custom_emoji_id = payload.emoji.id
         # pylanceを黙らせる用処理
         if not custom_emoji_id:
