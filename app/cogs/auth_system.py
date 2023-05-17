@@ -1,6 +1,5 @@
-from discord.ext import commands
-
 from discord import RawReactionActionEvent
+from discord.ext import commands
 
 
 class Auth_System(commands.Cog):
@@ -21,9 +20,7 @@ class Auth_System(commands.Cog):
     @commands.Cog.listener("on_raw_reaction_add")
     async def auth_system_reaction_add(self, payload: RawReactionActionEvent):
         """リアクションが付いた時に発火するイベント
-
         `on_reaction_add`との違いはキャッシュに残ってないメッセージにも対応できる
-
         """
         # リアクションを付けたメッセージのIDが指定したものじゃなければ処理を中断
         if payload.message_id != self.auth_message_id:
@@ -42,7 +39,13 @@ class Auth_System(commands.Cog):
 
         # 押されたリアクションのIDが辞書のキーにあるか調べる
         # もしあれば、対応したロールIDを取得する
-        if not (position_role_id := self.reaction_to_role.get(payload.emoji.id)):
+        
+        custom_emoji_id = payload.emoji.id
+        # pylanceを黙らせる用処理
+        if not custom_emoji_id:
+            custom_emoji_id = 0
+
+        if not (position_role_id := self.reaction_to_role.get(custom_emoji_id)):
             return
 
         # 取得したロールIDからロールオブジェクトを取得
