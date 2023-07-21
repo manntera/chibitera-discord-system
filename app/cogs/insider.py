@@ -66,19 +66,19 @@ class Insider(commands.Cog):
         
         members = [member for member in voice.channel.members if not member.bot or "観戦" not in member.display_name]
         
-        # if len(members) < 5: # 最低人数: ゲームマスター、インサイダー、庶民 × 2
+        if len(members) < 5: # 最低人数: ゲームマスター、インサイダー、庶民 × 2
             
-        #     e = discord.Embed(
-        #         title="インサイダーゲームを開始するには最低4人以上必要です!"
-        #     )
-        #     await ctx.send(embeds=[e])
-        #     return
+            e = discord.Embed(
+                title="インサイダーゲームを開始するには最低4人以上必要です!"
+            )
+            await ctx.send(embeds=[e])
+            return
         
         game_master = random.choice(members)
-        #members.remove(game_master)
+        members.remove(game_master)
         
         insider = random.choice(members)
-        #members.remove(insider)
+        members.remove(insider)
         
         try:
             game_master_private_message = await game_master.send("ゲームマスターに選ばれました。ここにお題を入力してください。\nここでゲームを終了するときは【キャンセル】と入力してください")
