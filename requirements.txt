@@ -2,3 +2,5 @@ pip
 setuptools
 numpy
 discord.py[voice]
+google-api-python-client
+google-cloud-storage
