@@ -10,7 +10,7 @@ ENV LC_ALL ja_JP.UTF-8
 ENV TZ JST-9
 ENV TERM xterm
 
-RUN apt-get install -y vim less
+RUN apt-get install -y vim less ffmpeg
 
 COPY requirements.txt /
 RUN pip install -Ur requirements.txt
