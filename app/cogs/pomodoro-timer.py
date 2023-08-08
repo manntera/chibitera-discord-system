@@ -396,10 +396,18 @@ class PomodoroTimer(commands.Cog):
             return
         
         await notice_channel.send(timekeeper["profile"])
+
+        while self.vclient.is_playing():
+            await asyncio.sleep(1)
         
         await self.gcloud.download_greeting_voice(timekeeper_id)
         self.vclient.play()
-        
+
+        while self.vclient.is_playing():
+            await asyncio.sleep(1)
+
+        await asyncio.sleep(1.5)
+
         await self.gcloud.download_first_work_voice(timekeeper_id)
         self.vclient.play()
         
@@ -411,14 +419,15 @@ class PomodoroTimer(commands.Cog):
     async def on_voice_state_update(self, member: Member, before: VoiceState, after: VoiceState):
         #ミュート切替、画面共有切替等でも発火するので
         #移動意外は除外
+
         if (before.channel and after.channel) and (before.channel.id == after.channel.id):
             return
+
+        if after.channel and after.channel.id == int(self.sagyou_vc_id):
+            self.bot.dispatch("join", member, before, after)
         
-        if after.channel and after.channel.id == self.sagyou_vc_id:
-            self.bot.dispatch("on_join", member, before, after)
-        
-        elif before.channel and before.channel.id ==  self.sagyou_vc_id:
-            self.bot.dispatch("on_leave", member, before, after)
+        elif before.channel and before.channel.id == int(self.sagyou_vc_id):
+            self.bot.dispatch("leave", member, before, after)
         
         
     @commands.Cog.listener()
@@ -439,16 +448,8 @@ class PomodoroTimer(commands.Cog):
         
         if member.bot:
             return
-        
-        try:
-            await self._on_join(before, after)
-        except:
-            try:
-                if self.vclient and self.bot.user:
-                    await self.vclient.disconnect(force=True)
-            except:
-                pass
-            raise 
+
+        await self._on_join(before, after)
 
 
     @commands.Cog.listener()
@@ -474,7 +475,7 @@ class PomodoroTimer(commands.Cog):
         if not before.channel:
             return
         
-        if before.channel.id != self.sagyou_vc_id:
+        if before.channel.id != int(self.sagyou_vc_id):
             return
         
         if not self.vclient:
