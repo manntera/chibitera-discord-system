@@ -1,8 +1,11 @@
 import sys
+from typing import Any
 
-from config import TOKEN
+import sentry_sdk
+from config import SENTRY_SDK, TOKEN
 from discord import Intents
 from discord.ext import commands
+from sentry_sdk.integrations.asyncio import AsyncioIntegration
 
 intents = Intents.default()
 intents.message_content = True
@@ -13,14 +16,23 @@ cogs = ["pomodoro-timer"]
 class Main(commands.Bot):
     def __init__(self):
         super().__init__(command_prefix="ch!", intents=intents)
+        
+        sentry_sdk.init(
+            dsn=SENTRY_SDK,
+            integrations=[
+                AsyncioIntegration(),
+            ],
+        )
 
     async def setup_hook(self):
+        await super().setup_hook()
+
+    async def on_ready(self):
         for cog in cogs:
             module = f"cogs.{cog}"
             await self.load_extension(module)
             print(module, "読み込み完了")
-
-    async def on_ready(self):
+        
         # self.userがオプショナルになってたので
         # self.userがNoneの場合は起動中止
         if not self.user:
