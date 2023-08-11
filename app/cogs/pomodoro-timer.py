@@ -8,22 +8,29 @@ from typing import TYPE_CHECKING, Literal, TypedDict
 
 import config
 from discord import (
+    ButtonStyle,
+    Color,
+    Embed,
     FFmpegPCMAudio,
+    Interaction,
     Member,
     TextChannel,
     VoiceChannel,
     VoiceClient,
     VoiceState,
+    ui,
     utils,
 )
 from discord.ext import commands, tasks
 from google.cloud import storage
 
+from .utils import excepter
+
 if TYPE_CHECKING:
     from main import Main
 
 class __TActors(TypedDict):
-    id: str
+    name: str
 
 class TActors(TypedDict):
     actor_info: list[__TActors]
@@ -35,35 +42,54 @@ class __TActor_Voices(TypedDict):
 class TActor(TypedDict):
     actor_name: str
     profile: str
+    leave: str
     voice_list: list[__TActor_Voices]
     
     
 class NotFoundActorJson(Exception):
-    def __init__(self, timekeeper_id: str):
+    def __init__(self, timekeeper_name: str):
         super().__init__()
-        self.message = f"{timekeeper_id}の`actor.json`が見つかりませんでした"
+        self.message = f"{timekeeper_name}の`actor.json`が見つかりませんでした"
+
+BUCKET_NAME = "pomodorotimer"
+PATH_ACTORLIST_JSON = "actors/actorlist.json"
+PATH_ACTOR_JSON = "actors/{timekeeper_name}/actor.json"
+PATH_ACTOR_VOICE_FILE_NAME = "actors/{timekeeper_name}/{voice_id}.wav" # actor.jsonのid_listから取得したボイスIDのファイルを取得
+PATH_PLAY_VOICE_FILE_NAME = "voice.wav" # 動作環境上に保存されたボイスファイル(これを再生)
 
 
 class GCStorageClient:
     def __init__(self, bot: Main):
         self.storage_client = storage.Client()
-        self.bucket = self.storage_client.bucket("pomodorotimer")
+        self.bucket = self.storage_client.bucket(BUCKET_NAME)
 
         self.bot = bot
+        self.debug_channel: TextChannel = self.bot.get_channel(config.POMO_DEBUG_CHANNEL_ID) # type: ignore
+        print(config.POMO_DEBUG_CHANNEL_ID, self.debug_channel)
+
+        # DEBUG_CHANNEL_IDが不正な値だったら、起動時にエラーが出る
+        if not isinstance(self.debug_channel, TextChannel):
+            raise Exception(f"debug channelはテキストチャンネルである必要があります {self.debug_channel=}")
     
-    async def get_timekeeper_id(self) -> str | None:
+    async def get_timekeeper_name(self) -> str:
         """タイムキーパーをランダムに一人取得する
 
         Returns
         -------
-        int | None
-            タイムキーパーのID
+        str | None
+            タイムキーパーの名前
         """
-        _actors_file = self.bucket.get_blob("actors/actorlist.json")
+        _actors_file = self.bucket.get_blob(PATH_ACTORLIST_JSON)
         
         if not _actors_file:
-            print("not actors file")
-            return None
+            e = Embed(
+                title="NOT FOUND actorlist.json",
+                description=f"`{PATH_ACTORLIST_JSON}`が見つかりません",
+                color=Color.red()
+            )
+            
+            await self.debug_channel.send(embeds=[e])
+            raise
         
         #ダウンロードせずにファイルの中身を文字列で取得
         actor_file = await asyncio.to_thread(_actors_file.download_as_text, encoding="utf-8")
@@ -72,26 +98,33 @@ class GCStorageClient:
         
         actors = actors_info["actor_info"]
         
-        return (random.choice(actors))["id"]
+        return (random.choice(actors))["name"]
 
 
-    async def get_timekeeper_info(self, timekeeper_id: str) -> TActor | None:
-        """タイムキーパーのIDから名前・ボイス一覧を取得する
+    async def get_timekeeper_info(self, timekeeper_name: str) -> TActor:
+        """タイムキーパーの名前から名前・ボイス一覧を取得する
 
         Parameters
         ----------
-        timekeeper_id : int
-            タイムキーパーのID
+        timekeeper_name : int
+            タイムキーパーの名前
 
         Returns
         -------
         TActor | None
             _description_ : タイムキーパーの名前とボイス一覧
         """
-        _actor_file = self.bucket.get_blob(f"actors/actor{timekeeper_id}/actor.json")
+        _actor_file = self.bucket.get_blob(PATH_ACTOR_JSON.format(timekeeper_name=timekeeper_name))
         
         if not _actor_file:
-            return None
+            e = Embed(
+                title="NOT FOUND actor.json",
+                description=f"{PATH_ACTOR_JSON.format(timekeeper_name=timekeeper_name)}が見つかりません。",
+                color=Color.red()
+            )
+            await self.debug_channel.send(embeds=[e])
+            raise
+
         
         #ダウンロードせずにファイルの中身を文字列で取得
         actor_file = await asyncio.to_thread(_actor_file.download_as_text, encoding="utf-8")
@@ -99,147 +132,166 @@ class GCStorageClient:
         actor_info: TActor = json.loads(actor_file)        
         return actor_info
     
-    async def get_timekeeper_icon(self, timekeeper_id: str) -> bytes | None:
-        """タイムキーパーのアイコンを取得する
+    async def __download_voice_file(self, timekeeper_name: str, voice_id: str) -> None:
+        """指定したボイスIDのファイルをダウンロードする
 
         Parameters
         ----------
-        timekeeper_id : int
-            タイムキーパーのID
+        timekeeper_name : str
+            タイムキーパーの名前
+        voice_id : str
+            ボイスID
 
         Returns
         -------
-        bytes | None
-            画像のバイト
+        _type_
+            ダウンロードするだけなので戻り値無し
         """
-        _actor_icon = self.bucket.get_blob(f"actors/actor{timekeeper_id}/icon.png")
         
-        if not _actor_icon:
-            return None
-        
-        #ダウンロードせずにファイルの中身を文字列で取得
-        actor_icon = await asyncio.to_thread(_actor_icon.download_as_bytes)
-        return actor_icon
-
-
-    async def __download_voice_file(self, timekeeper_id: str, voice_id: str):
-        voice_blob = self.bucket.get_blob(f"actors/actor{timekeeper_id}/{voice_id}.wav")
+        voice_blob = self.bucket.get_blob(PATH_ACTOR_VOICE_FILE_NAME.format(timekeeper_name=timekeeper_name, voice_id=voice_id))
         
         if not voice_blob:
-            return None
-        
+            e = Embed(
+                title="NOT FOUND actor voice file",
+                description=f"{PATH_ACTOR_VOICE_FILE_NAME.format(timekeeper_name=timekeeper_name, voice_id=voice_id)}が見つかりません。",
+                color=Color.red()
+            )
+            await self.debug_channel.send(embeds=[e])
+            raise
+
         #ダウンロードせずにファイルの中身を文字列で取得
         await asyncio.to_thread(voice_blob.download_to_filename, filename="voice.wav")
         return None
 
 
-    async def download_voice_file(self, index: int, timekeepeer_id: str):
-        actor_info = await self.get_timekeeper_info(timekeepeer_id)
+    async def download_voice_file(self, index: int, timekeepeer_name: str) -> tuple[int, str, str]:
+        """actor.jsonのid_listから一つボイスIDを取得し、ダウンロードする
+
+        Parameters
+        ----------
+        index : int
+            "001 ~ 006までのindex"
+        timekeepeer_name : str
+            ボイスファイルを取得するタイムキーパーの名前
+
+        Raises
+        ------
+        NotFoundActorJson
+            actor.jsonが無かった場合
+            
+        Returns
+        -------
+        None
+            ダウンロードするだけなので戻り値無し
+        """
+        
+        actor_info = await self.get_timekeeper_info(timekeepeer_name)
         
         if not actor_info:
-            raise NotFoundActorJson(timekeepeer_id)
+            raise NotFoundActorJson(timekeepeer_name)
         
         voices = actor_info["voice_list"][index]["id_list"]
         # idリストからランダムに取得
         voice_id = random.choice(voices)
 
-        await self.__download_voice_file(timekeepeer_id, voice_id)
+        await self.__download_voice_file(timekeepeer_name, voice_id)
+        return index, actor_info["voice_list"][index]["category"], voice_id
 
 
-    async def download_greeting_voice(self, timekeeper_id: str) -> None:
+    async def download_greeting_voice(self, timekeeper_name: str) -> tuple[int, str, str]:
         """タイムキーパーの挨拶ボイスをDLする
 
         Parameters
         ----------
-        timekeeper_id : int
-            タイムキーパーのID
+        timekeeper_name : int
+            タイムキーパーの名前
 
         Returns
         -------
         None
         """
         
-        await self.download_voice_file(0, timekeeper_id)
+        return await self.download_voice_file(0, timekeeper_name)
     
-    
-    async def download_first_work_voice(self, timekeeper_id: str) -> None:
-        """初回作業開始ボイスをDLする
-
-        Parameters
-        ----------
-        timekeeper_id : int
-            タイムキーパーのID
-
-        Returns
-        -------
-        None
-        """
-        
-        await self.download_voice_file(1, timekeeper_id)
-    
-    
-    async def download_before_complete_of_work_voice(self, timekeeper_id: str) -> None:
+    async def download_before_complete_of_work_voice(self, timekeeper_name: str) -> tuple[int, str, str]:
         """作業終了前ボイスをDLする
 
         Parameters
         ----------
-        timekeeper_id : int
-            タイムキーパーのID
+        timekeeper_name : int
+            タイムキーパーの名前
 
         Returns
         -------
         None
         """
         
-        await self.download_voice_file(2, timekeeper_id)
+        return await self.download_voice_file(1, timekeeper_name)
 
 
-    async def download_complete_of_work_voice(self, timekeeper_id: str) -> None:
+    async def download_complete_of_work_voice(self, timekeeper_name: str) -> tuple[int, str, str]:
         """作業終了(休憩開始)ボイスをDLする
 
         Parameters
         ----------
-        timekeeper_id : int
-            タイムキーパーのID
+        timekeeper_name : int
+            タイムキーパーの名前
 
         Returns
         -------
         None
         """
         
-        await self.download_voice_file(3, timekeeper_id)
+        return await self.download_voice_file(2, timekeeper_name)
 
 
-    async def download_before_complete_of_break_voice(self, timekeeper_id: str) -> None:
+    async def download_before_complete_of_break_voice(self, timekeeper_name: str) -> tuple[int, str, str]:
         """休憩終了前ボイスをDLする
 
         Parameters
         ----------
-        timekeeper_id : int
-            タイムキーパーのID
+        timekeeper_name : int
+            タイムキーパーの名前
 
         Returns
         -------
         None
         """
         
-        await self.download_voice_file(4, timekeeper_id)
+        return await self.download_voice_file(3, timekeeper_name)
 
 
-    async def download_complete_of_break_voice(self, timekeeper_id: str) -> None:
+    async def download_complete_of_break_voice(self, timekeeper_name: str) -> tuple[int, str, str]:
         """休憩終了(作業開始)ボイスをDLする
 
         Parameters
         ----------
-        timekeeper_id : int
-            タイムキーパーのID
+        timekeeper_name : int
+            タイムキーパーの名前
 
         Returns
         -------
         None
         """
         
-        await self.download_voice_file(5, timekeeper_id)
+        return await self.download_voice_file(4, timekeeper_name)
+    
+    
+    async def download_join_voice(self, timekeeper_name: str) -> None:
+        """2人目以降入室ボイスをDLする
+
+        Parameters
+        ----------
+        timekeeper_name : int
+            タイムキーパーの名前
+
+        Returns
+        -------
+        None
+        """
+        
+        await self.download_voice_file(5, timekeeper_name)
+
 
 
 class PomodoroTimerClient(VoiceClient):
@@ -250,30 +302,53 @@ class PomodoroTimerClient(VoiceClient):
         
         self.timekeeper: str
         
-    
+        
     def play(self):
-        super().play(FFmpegPCMAudio("voice.wav"))
+        super().play(FFmpegPCMAudio(PATH_PLAY_VOICE_FILE_NAME))
 
 
 class PomodoroTimer(commands.Cog):
     def __init__(self, bot: Main):
         self.bot = bot
         
-        self.sagyou_vc_id: str = config.SAGYOU_CHANNEL_ID #type: ignore
-        self.notice_channel_id: str = config.NOTICE_CHANNEL_ID #type: ignore
+        self.sagyou_vc_id: int = config.SAGYOU_CHANNEL_ID #type: ignore
+        self.notice_channel_id: int = config.NOTICE_CHANNEL_ID #type: ignore
 
         self.gcloud = GCStorageClient(bot)
         self.latest_time: datetime | None = None
         self.now_mode: Literal["before_work", "work", "before_break", "break"] | None = None
         self.vclient: PomodoroTimerClient | None = None
         
-        self.speak.start()
+        #self.speak.start()
         
+        self.admin_panel_view = AdminPanelView()
+        
+        self.bot.add_view(self.admin_panel_view)
+        
+    async def cog_load(self) -> None:
+        self.speak.start()
     async def cog_unload(self) -> None:
         self.speak.cancel()
+        self.admin_panel_view.stop()
+        
+    
+    async def send_debug(self, *messages) -> None:
+        debug_channel = self.bot.get_channel(config.POMO_DEBUG_CHANNEL_ID)
+        # DEBUG_CHANNEL_IDが不正な値だったら、起動時にエラーが出る
+        if not isinstance(debug_channel, TextChannel):
+            return None
+        
+        e = Embed(
+            description=" ".join(message for message in messages),
+            color=Color.from_str("#85d0f3")
+        )
+        
+        await debug_channel.send(embeds=[e])
+        return None
 
 
-    @tasks.loop(minutes=1)
+    @tasks.loop(seconds=10)
+    @excepter
     async def speak(self):
         await self.bot.wait_until_ready()
         
@@ -283,42 +358,43 @@ class PomodoroTimer(commands.Cog):
         now = utils.utcnow()
         
         if self.now_mode == "before_work":
-            if self.latest_time + timedelta(minutes=27) >= now:
+            if self.latest_time + timedelta(minutes=2) >= now:
                 return
             
             self.now_mode = "work"
             
             try:
-                await self.gcloud.download_before_complete_of_work_voice(self.vclient.timekeeper)
+                index, category, voice_id = await self.gcloud.download_before_complete_of_work_voice(self.vclient.timekeeper)
             except NotFoundActorJson:
                 return
             
-            print("作業終了3分前です", now)
-        
+            debug_message = "作業終了予告ボイス再生完了"
         
         elif self.now_mode == "work":
-            if self.latest_time + timedelta(minutes=30) >= now:
+            if self.latest_time + timedelta(minutes=5) >= now:
                 return
             self.now_mode = "before_break"
             self.latest_time = now
             
             try:
-                await self.gcloud.download_complete_of_work_voice(self.vclient.timekeeper)
+                index, category, voice_id = await self.gcloud.download_complete_of_work_voice(self.vclient.timekeeper)
             except NotFoundActorJson:
                 return
             
-            print("作業終了です", now)
+            debug_message = "作業終了再生完了"
         
         elif self.now_mode == "before_break":
-            if self.latest_time + timedelta(minutes=3) >= now:
+            if self.latest_time + timedelta(minutes=2) >= now:
                 return
             self.now_mode = "break"
 
             try:
-                await self.gcloud.download_before_complete_of_break_voice(self.vclient.timekeeper)
+                index, category, voice_id = await self.gcloud.download_before_complete_of_break_voice(self.vclient.timekeeper)
             except NotFoundActorJson:
                 return
-
+            
+            debug_message = "休憩終了予告ボイス再生完了"
+            
         elif self.now_mode == "break":
             if self.latest_time + timedelta(minutes=5) >= now:
                 return
@@ -326,11 +402,11 @@ class PomodoroTimer(commands.Cog):
             self.latest_time = now
             
             try:
-                await self.gcloud.download_complete_of_break_voice(self.vclient.timekeeper)
+                index, category, voice_id = await self.gcloud.download_complete_of_break_voice(self.vclient.timekeeper)
             except NotFoundActorJson:
                 return
             
-            print("休憩終了です", now)
+            debug_message = "休憩終了ボイス再生完了"
         else:
             return
 
@@ -343,12 +419,19 @@ class PomodoroTimer(commands.Cog):
                 break
             except Exception:
                 await asyncio.sleep(1)
+                
+        debug_message += f"\n\n{index=}"
+        debug_message += f"\n{category=}"
+        debug_message += f"\n{voice_id=}"
+        debug_message += f"\n\n{now=}"
+                
+        await self.send_debug(debug_message)
 
 
-    async def _on_join(self, before: VoiceState, after: VoiceState):
+    async def _on_join(self, before: VoiceState | None, after: VoiceState):
         #ミュート切替、画面共有切替等でも発火するので
         #移動意外は除外
-        if (before.channel and after.channel) and (before.channel.id == after.channel.id):
+        if before and (before.channel and after.channel) and (before.channel.id == after.channel.id):
             return
         
         if not after.channel:
@@ -359,35 +442,43 @@ class PomodoroTimer(commands.Cog):
         if not guild:
             return
         
-        if after.channel.id != int(self.sagyou_vc_id):
+        if after.channel.id != self.sagyou_vc_id:
             return
         
+        humans = [member for member in after.channel.members if not member.bot]
         
-        if len(after.channel.members) not in [1,2]:
+        if len(humans) >= 2 and self.vclient and not self.vclient.is_playing():
+            try:
+                await self.gcloud.download_join_voice(self.vclient.timekeeper)
+            except NotFoundActorJson:
+                return
+
+            self.vclient.play()
             return
+        
+        elif not humans:
+            return
+        
+        if not self.vclient and guild.voice_client:
+            try:
+                await guild.voice_client.disconnect(force=True)
+            except:
+                raise
         
         self.vclient = await after.channel.connect(cls=PomodoroTimerClient) #type: ignore
-        timekeeper_id = await self.gcloud.get_timekeeper_id()
+        timekeeper_name = await self.gcloud.get_timekeeper_name()
 
-        if not timekeeper_id:
+        if not timekeeper_name:
             return
         
-        self.vclient.timekeeper = timekeeper_id
+        self.vclient.timekeeper = timekeeper_name
         
-        timekeeper = await self.gcloud.get_timekeeper_info(timekeeper_id)
+        timekeeper = await self.gcloud.get_timekeeper_info(timekeeper_name)
         
         if not timekeeper:
             return
         
-        timekeeper_icon = await self.gcloud.get_timekeeper_icon(timekeeper_id)
-        
-        if timekeeper_icon:
-            return
-                
-        if not self.bot.user:
-            return
-        
-        notice_channel = self.bot.get_channel(int(self.notice_channel_id))
+        notice_channel = self.bot.get_channel(self.notice_channel_id)
         
         if not notice_channel:
             return
@@ -397,40 +488,31 @@ class PomodoroTimer(commands.Cog):
         
         await notice_channel.send(timekeeper["profile"])
 
-        while self.vclient.is_playing():
-            await asyncio.sleep(1)
-        
-        await self.gcloud.download_greeting_voice(timekeeper_id)
+        await self.gcloud.download_greeting_voice(timekeeper_name)
         self.vclient.play()
 
-        while self.vclient.is_playing():
-            await asyncio.sleep(1)
-
-        await asyncio.sleep(1.5)
-
-        await self.gcloud.download_first_work_voice(timekeeper_id)
-        self.vclient.play()
+        # while self.vclient.is_playing():
+        #     await asyncio.sleep(1)
         
         self.latest_time = utils.utcnow()
         self.now_mode = "before_work"
     
 
     @commands.Cog.listener()
+    @excepter
     async def on_voice_state_update(self, member: Member, before: VoiceState, after: VoiceState):
         #ミュート切替、画面共有切替等でも発火するので
         #移動意外は除外
 
-        if (before.channel and after.channel) and (before.channel.id == after.channel.id):
-            return
-
-        if after.channel and after.channel.id == int(self.sagyou_vc_id):
+        if after.channel and after.channel.id == self.sagyou_vc_id:
             self.bot.dispatch("join", member, before, after)
         
-        elif before.channel and before.channel.id == int(self.sagyou_vc_id):
+        elif before.channel and before.channel.id == self.sagyou_vc_id:
             self.bot.dispatch("leave", member, before, after)
         
         
     @commands.Cog.listener()
+    @excepter
     async def on_join(self, member: Member, before: VoiceState, after: VoiceState):
         """
         ①該当のボイスチャンネルに誰かが入ったら、BOTがチャンネルに入る
@@ -453,7 +535,8 @@ class PomodoroTimer(commands.Cog):
 
 
     @commands.Cog.listener()
-    async def on_leave(self, member: Member, before: VoiceState, after: VoiceState):
+    @excepter
+    async def on_leave(self, member: Member, before: VoiceState, after: VoiceState | None):
         """
         作業通話から誰もいなくなったらBOTを切断する
 
@@ -469,21 +552,26 @@ class PomodoroTimer(commands.Cog):
         
         #ミュート切替、画面共有切替等でも発火するので
         #移動意外は除外
-        if (before.channel and after.channel) and (before.channel.id == after.channel.id):
+        if after and (before.channel and after.channel) and (before.channel.id == after.channel.id):
             return
-        
+
         if not before.channel:
-            return
-        
-        if before.channel.id != int(self.sagyou_vc_id):
             return
         
         if not self.vclient:
             return
         
-        members = [member for member in before.channel.members if not member.bot]
+        humans = [member for member in before.channel.members if not member.bot]
         
-        if members:
+        if humans:
+            timekeeper = await self.gcloud.get_timekeeper_info(self.vclient.timekeeper)
+            
+            channel = self.bot.get_channel(config.LEAVE_CHANNEL_ID)
+
+            if not isinstance(channel, TextChannel):
+                return
+            await channel.send(timekeeper.get("leave") or f"またね～")
+
             return
         
         await self.vclient.disconnect(force=True)
@@ -491,7 +579,31 @@ class PomodoroTimer(commands.Cog):
         self.vclient = None
         self.latest_time = None
         self.now_mode = None
+    
+
+class AdminPanelView(ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
         
+    @ui.button(label="入室", style=ButtonStyle.green, custom_id="pomo-join")
+    async def join(self, interaction: Interaction, _):
+        await interaction.response.defer()
+        
+        if not isinstance(interaction.user, Member):
+            return
+        
+        interaction.client.dispatch("join", None, interaction.user.voice)
+            
+    @ui.button(label="退出", style=ButtonStyle.red, custom_id="pomo-leave")
+    async def leave(self, interaction: Interaction, _):
+        await interaction.response.defer()
+        
+        if not isinstance(interaction.user, Member):
+            return
+        
+        interaction.client.dispatch("leave", interaction.user.voice, None)
+            
+    
 
 async def setup(bot: Main):
     await bot.add_cog(PomodoroTimer(bot))
