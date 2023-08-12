@@ -325,6 +325,53 @@ class PomodoroTimer(commands.Cog):
         
         self.bot.add_view(self.admin_panel_view)
         
+        
+        self.voice_dict = {
+            "before_work": {
+                "desc": "作業終了前",
+                "download_func": None,
+                "timedelta": {
+                    "minutes": 2 # 作業終了3分前
+                },
+                "next_mode": "work",
+                "debug_message": "作業終了予告ボイス再生完了",
+                "is_update_latest_time": False
+            },
+            "work": {
+                "desc": "作業終了",
+                "download_func": None,
+                "timedelta": {
+                    "minutes": 5 # 作業終了(作業時間X分)
+                },
+                "next_mode": "before_break",
+                "debug_message": "作業終了ボイス再生完了",
+                "is_update_latest_time": True
+            },
+            "before_break": {
+                "desc": "休憩終了前",
+                "download_func": None,
+                "timedelta": {
+                    "minutes": 2 # 休憩終了3分前
+                },
+                "next_mode": "break",
+                "debug_message": "休憩終了予告ボイス再生完了",
+                "is_update_latest_time": False
+            },
+            "break": {
+                "desc": "休憩終了",
+                "download_func": None,
+                "timedelta": {
+                    "minutes": 5 # 休憩終了(休憩時間X分)
+                },
+                "next_mode": "before_work",
+                "debug_message": "休憩終了ボイス再生完了",
+                "is_update_latest_time": True
+            },
+            
+            
+        }
+        
+        
     async def cog_load(self) -> None:
         self.speak.start()
     async def cog_unload(self) -> None:
@@ -356,59 +403,19 @@ class PomodoroTimer(commands.Cog):
             return
     
         now = utils.utcnow()
-        
-        if self.now_mode == "before_work":
-            if self.latest_time + timedelta(minutes=2) >= now:
-                return
-            
-            self.now_mode = "work"
-            
-            try:
-                index, category, voice_id = await self.gcloud.download_before_complete_of_work_voice(self.vclient.timekeeper)
-            except NotFoundActorJson:
-                return
-            
-            debug_message = "作業終了予告ボイス再生完了"
-        
-        elif self.now_mode == "work":
-            if self.latest_time + timedelta(minutes=5) >= now:
-                return
-            self.now_mode = "before_break"
-            self.latest_time = now
-            
-            try:
-                index, category, voice_id = await self.gcloud.download_complete_of_work_voice(self.vclient.timekeeper)
-            except NotFoundActorJson:
-                return
-            
-            debug_message = "作業終了再生完了"
-        
-        elif self.now_mode == "before_break":
-            if self.latest_time + timedelta(minutes=2) >= now:
-                return
-            self.now_mode = "break"
 
-            try:
-                index, category, voice_id = await self.gcloud.download_before_complete_of_break_voice(self.vclient.timekeeper)
-            except NotFoundActorJson:
-                return
-            
-            debug_message = "休憩終了予告ボイス再生完了"
-            
-        elif self.now_mode == "break":
-            if self.latest_time + timedelta(minutes=5) >= now:
-                return
-            self.now_mode = "before_work"
-            self.latest_time = now
-            
-            try:
-                index, category, voice_id = await self.gcloud.download_complete_of_break_voice(self.vclient.timekeeper)
-            except NotFoundActorJson:
-                return
-            
-            debug_message = "休憩終了ボイス再生完了"
-        else:
+        prm = self.voice_dict[self.now_mode]
+        
+        if self.latest_time + timedelta(**prm["timedelta"]) >= now:
             return
+        
+        self.now_mode = prm["next_mode"]
+        try:
+            index, category, voice_id = await prm["download_func"](self.vclient.timekeeper)
+        except NotFoundActorJson:
+            return
+        
+        debug_message = prm["debug_message"]
 
         # エラーが出たとき5回トライする
         # 5回トライしてエラーが出たら諦める
@@ -419,7 +426,7 @@ class PomodoroTimer(commands.Cog):
                 break
             except Exception:
                 await asyncio.sleep(1)
-                
+
         debug_message += f"\n\n{index=}"
         debug_message += f"\n{category=}"
         debug_message += f"\n{voice_id=}"
