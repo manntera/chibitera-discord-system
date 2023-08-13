@@ -51,6 +51,16 @@ class NotFoundActorJson(Exception):
         super().__init__()
         self.message = f"{timekeeper_name}の`actor.json`が見つかりませんでした"
 
+class NotFoundActorListJson(Exception):
+    def __init__(self):
+        super().__init__()
+        self.message = f"actorlist.jsonが見つかりませんでした"
+
+class NotFoundVoice(Exception):
+    def __init__(self, timekeeper_name: str, voice_id: str):
+        super().__init__()
+        self.message = f"`{timekeeper_name}`の`{voice_id}`が見つかりませんでした"
+
 BUCKET_NAME = "pomodorotimer"
 PATH_ACTORLIST_JSON = "actors/actorlist.json"
 PATH_ACTOR_JSON = "actors/{timekeeper_name}/actor.json"
@@ -65,10 +75,9 @@ class GCStorageClient:
 
         self.bot = bot
         self.debug_channel: TextChannel = self.bot.get_channel(config.POMO_DEBUG_CHANNEL_ID) # type: ignore
-        print(config.POMO_DEBUG_CHANNEL_ID, self.debug_channel)
 
-        # DEBUG_CHANNEL_IDが不正な値だったら、起動時にエラーが出る
-        if not isinstance(self.debug_channel, TextChannel):
+        # DEBUG_MODE有効時、DEBUG_CHANNEL_IDが不正な値だったら、起動時にエラーが出る
+        if bot.is_debug_mode and not isinstance(self.debug_channel, TextChannel):
             raise Exception(f"debug channelはテキストチャンネルである必要があります {self.debug_channel=}")
     
     async def get_timekeeper_name(self) -> str:
@@ -82,6 +91,9 @@ class GCStorageClient:
         _actors_file = self.bucket.get_blob(PATH_ACTORLIST_JSON)
         
         if not _actors_file:
+            if not self.bot.is_debug_mode:
+                raise NotFoundActorListJson()
+            
             e = Embed(
                 title="NOT FOUND actorlist.json",
                 description=f"`{PATH_ACTORLIST_JSON}`が見つかりません",
@@ -89,7 +101,7 @@ class GCStorageClient:
             )
             
             await self.debug_channel.send(embeds=[e])
-            raise
+            raise NotFoundActorListJson()
         
         #ダウンロードせずにファイルの中身を文字列で取得
         actor_file = await asyncio.to_thread(_actors_file.download_as_text, encoding="utf-8")
@@ -99,7 +111,18 @@ class GCStorageClient:
         actors = actors_info["actor_info"]
         
         return (random.choice(actors))["name"]
+    
+    async def __send_not_found_actor_json(self, timekeeper_name: str) -> None:
+        if not self.bot.is_debug_mode:
+            return
 
+        e = Embed(
+            title="NOT FOUND actor.json",
+            description=f"{PATH_ACTOR_JSON.format(timekeeper_name=timekeeper_name)}が見つかりません。",
+            color=Color.red()
+        )
+        await self.debug_channel.send(embeds=[e])
+        return
 
     async def get_timekeeper_info(self, timekeeper_name: str) -> TActor:
         """タイムキーパーの名前から名前・ボイス一覧を取得する
@@ -117,15 +140,9 @@ class GCStorageClient:
         _actor_file = self.bucket.get_blob(PATH_ACTOR_JSON.format(timekeeper_name=timekeeper_name))
         
         if not _actor_file:
-            e = Embed(
-                title="NOT FOUND actor.json",
-                description=f"{PATH_ACTOR_JSON.format(timekeeper_name=timekeeper_name)}が見つかりません。",
-                color=Color.red()
-            )
-            await self.debug_channel.send(embeds=[e])
-            raise
+            await self.__send_not_found_actor_json(timekeeper_name)
+            raise NotFoundActorJson(timekeeper_name)
 
-        
         #ダウンロードせずにファイルの中身を文字列で取得
         actor_file = await asyncio.to_thread(_actor_file.download_as_text, encoding="utf-8")
         
@@ -151,13 +168,17 @@ class GCStorageClient:
         voice_blob = self.bucket.get_blob(PATH_ACTOR_VOICE_FILE_NAME.format(timekeeper_name=timekeeper_name, voice_id=voice_id))
         
         if not voice_blob:
+            if not self.bot.is_debug_mode:
+                raise NotFoundVoice(timekeeper_name, voice_id)
+            
             e = Embed(
                 title="NOT FOUND actor voice file",
                 description=f"{PATH_ACTOR_VOICE_FILE_NAME.format(timekeeper_name=timekeeper_name, voice_id=voice_id)}が見つかりません。",
                 color=Color.red()
             )
             await self.debug_channel.send(embeds=[e])
-            raise
+            
+            raise NotFoundVoice(timekeeper_name, voice_id)
 
         #ダウンロードせずにファイルの中身を文字列で取得
         await asyncio.to_thread(voice_blob.download_to_filename, filename="voice.wav")
@@ -186,9 +207,6 @@ class GCStorageClient:
         """
         
         actor_info = await self.get_timekeeper_info(timekeepeer_name)
-        
-        if not actor_info:
-            raise NotFoundActorJson(timekeepeer_name)
         
         voices = actor_info["voice_list"][index]["id_list"]
         # idリストからランダムに取得
@@ -380,6 +398,9 @@ class PomodoroTimer(commands.Cog):
         
     
     async def send_debug(self, *messages) -> None:
+        if not self.bot.is_debug_mode:
+            return
+        
         debug_channel = self.bot.get_channel(config.POMO_DEBUG_CHANNEL_ID)
         
         if not isinstance(debug_channel, TextChannel):
@@ -587,6 +608,20 @@ class PomodoroTimer(commands.Cog):
         self.latest_time = None
         self.now_mode = None
     
+
+    @commands.command(name="デバッグ切替")
+    @excepter
+    async def change_debug_mode(self, ctx: commands.Context, enable: bool | None = None):
+        if enable is None:
+            self.bot.is_debug_mode = not self.bot.is_debug_mode
+        else:
+            self.bot.is_debug_mode = enable
+        
+        await ctx.send(f"デバッグモード{self.bot.is_debug_mode}に変更したよ")
+        
+    
+        
+
 
 class AdminPanelView(ui.View):
     def __init__(self):
