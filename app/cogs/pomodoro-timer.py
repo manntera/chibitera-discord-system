@@ -381,7 +381,7 @@ class PomodoroTimer(commands.Cog):
     
     async def send_debug(self, *messages) -> None:
         debug_channel = self.bot.get_channel(config.POMO_DEBUG_CHANNEL_ID)
-        # DEBUG_CHANNEL_IDが不正な値だったら、起動時にエラーが出る
+        
         if not isinstance(debug_channel, TextChannel):
             return None
         
