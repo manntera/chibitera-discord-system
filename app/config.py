@@ -8,3 +8,4 @@ POMO_DEBUG_CHANNEL_ID: int = int(os.environ.get("POMO_DEBUG_CHANNEL_ID") or 0)
 LEAVE_CHANNEL_ID: int = int(os.environ.get("LEAVE_CHANNEL_ID") or 0)
 
 SENTRY_SDK: str = os.environ.get("SENTRY_SDK") or ""
+DEBUG_MODE: bool = bool(os.environ.get("DEBUG_MODE", 0))

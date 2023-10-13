@@ -1,8 +1,7 @@
 import sys
-from typing import Any
 
 import sentry_sdk
-from config import SENTRY_SDK, TOKEN
+from config import DEBUG_MODE, SENTRY_SDK, TOKEN
 from discord import Intents
 from discord.ext import commands
 from sentry_sdk.integrations.asyncio import AsyncioIntegration
@@ -23,6 +22,7 @@ class Main(commands.Bot):
                 AsyncioIntegration(),
             ],
         )
+        self.is_debug_mode = DEBUG_MODE
 
     async def setup_hook(self):
         await super().setup_hook()
