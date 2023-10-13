@@ -347,7 +347,7 @@ class PomodoroTimer(commands.Cog):
         self.voice_dict = {
             "before_work": {
                 "desc": "作業終了前",
-                "download_func": None,
+                "download_func": self.gcloud.download_before_complete_of_work_voice,
                 "timedelta": {
                     "minutes": 2 # 作業終了3分前
                 },
@@ -357,7 +357,7 @@ class PomodoroTimer(commands.Cog):
             },
             "work": {
                 "desc": "作業終了",
-                "download_func": None,
+                "download_func": self.gcloud.download_complete_of_work_voice,
                 "timedelta": {
                     "minutes": 5 # 作業終了(作業時間X分)
                 },
@@ -367,7 +367,7 @@ class PomodoroTimer(commands.Cog):
             },
             "before_break": {
                 "desc": "休憩終了前",
-                "download_func": None,
+                "download_func": self.gcloud.download_before_complete_of_break_voice,
                 "timedelta": {
                     "minutes": 2 # 休憩終了3分前
                 },
@@ -377,7 +377,7 @@ class PomodoroTimer(commands.Cog):
             },
             "break": {
                 "desc": "休憩終了",
-                "download_func": None,
+                "download_func": self.gcloud.download_complete_of_break_voice,
                 "timedelta": {
                     "minutes": 5 # 休憩終了(休憩時間X分)
                 },
@@ -454,6 +454,9 @@ class PomodoroTimer(commands.Cog):
         debug_message += f"\n\n{now=}"
                 
         await self.send_debug(debug_message)
+        
+        if prm["is_update_latest_time"]:
+            self.latest_time = utils.utcnow()
 
 
     async def _on_join(self, before: VoiceState | None, after: VoiceState):
