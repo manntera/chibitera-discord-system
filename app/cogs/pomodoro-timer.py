@@ -349,7 +349,7 @@ class PomodoroTimer(commands.Cog):
                 "desc": "作業終了前",
                 "download_func": self.gcloud.download_before_complete_of_work_voice,
                 "timedelta": {
-                    "minutes": 2 # 作業終了3分前
+                    "minutes": 42 # 作業終了3分前
                 },
                 "next_mode": "work",
                 "debug_message": "作業終了予告ボイス再生完了",
@@ -359,7 +359,7 @@ class PomodoroTimer(commands.Cog):
                 "desc": "作業終了",
                 "download_func": self.gcloud.download_complete_of_work_voice,
                 "timedelta": {
-                    "minutes": 5 # 作業終了(作業時間X分)
+                    "minutes": 45 # 作業終了(作業時間X分)
                 },
                 "next_mode": "before_break",
                 "debug_message": "作業終了ボイス再生完了",
@@ -369,7 +369,7 @@ class PomodoroTimer(commands.Cog):
                 "desc": "休憩終了前",
                 "download_func": self.gcloud.download_before_complete_of_break_voice,
                 "timedelta": {
-                    "minutes": 2 # 休憩終了3分前
+                    "minutes": 12 # 休憩終了3分前
                 },
                 "next_mode": "break",
                 "debug_message": "休憩終了予告ボイス再生完了",
@@ -379,7 +379,7 @@ class PomodoroTimer(commands.Cog):
                 "desc": "休憩終了",
                 "download_func": self.gcloud.download_complete_of_break_voice,
                 "timedelta": {
-                    "minutes": 5 # 休憩終了(休憩時間X分)
+                    "minutes": 15 # 休憩終了(休憩時間X分)
                 },
                 "next_mode": "before_work",
                 "debug_message": "休憩終了ボイス再生完了",
