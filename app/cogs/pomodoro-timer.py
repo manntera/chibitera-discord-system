@@ -459,10 +459,10 @@ class PomodoroTimer(commands.Cog):
             self.latest_time = utils.utcnow()
 
 
-    async def _on_join(self, before: VoiceState | None, after: VoiceState):
+    async def _on_join(self, before: VoiceState, after: VoiceState):
         #ミュート切替、画面共有切替等でも発火するので
         #移動意外は除外
-        if before and (before.channel and after.channel) and (before.channel.id == after.channel.id):
+        if (before.channel and after.channel) and (before.channel.id == after.channel.id):
             return
         
         if not after.channel:
@@ -567,7 +567,7 @@ class PomodoroTimer(commands.Cog):
 
     @commands.Cog.listener()
     @excepter
-    async def on_leave(self, member: Member, before: VoiceState, after: VoiceState | None):
+    async def on_leave(self, member: Member, before: VoiceState, after: VoiceState):
         """
         作業通話から誰もいなくなったらBOTを切断する
 
@@ -583,7 +583,7 @@ class PomodoroTimer(commands.Cog):
         
         #ミュート切替、画面共有切替等でも発火するので
         #移動意外は除外
-        if after and (before.channel and after.channel) and (before.channel.id == after.channel.id):
+        if (before.channel and after.channel) and (before.channel.id == after.channel.id):
             return
 
         if not before.channel:
@@ -595,16 +595,15 @@ class PomodoroTimer(commands.Cog):
         humans = [member for member in before.channel.members if not member.bot]
         
         if humans:
-            timekeeper = await self.gcloud.get_timekeeper_info(self.vclient.timekeeper)
-            
-            channel = self.bot.get_channel(config.LEAVE_CHANNEL_ID)
-
-            if not isinstance(channel, TextChannel):
-                return
-            await channel.send(timekeeper.get("leave") or f"またね～")
-
             return
+        timekeeper = await self.gcloud.get_timekeeper_info(self.vclient.timekeeper)
         
+        channel = self.bot.get_channel(config.LEAVE_CHANNEL_ID)
+
+        if not isinstance(channel, TextChannel):
+            return
+        await channel.send(timekeeper.get("leave") or f"またね～")
+
         await self.vclient.disconnect(force=True)
         
         self.vclient = None
