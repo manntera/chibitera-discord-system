@@ -101,13 +101,6 @@ class PomodoroTimerCog(commands.Cog):
         if self.latest_time + timedelta(**prm["timedelta"]) >= now:
             return
 
-        # Downloadクラスから対象のダウンロードメソッドを取得する
-        # exp: work_time -> Download.work_time を取得
-        download = getattr(self.pomo.download, self.now_mode)
-        index, category, voice_id = await download(self.pomo.timekeeper)
-
-        debug_message = prm["debug_message"]
-
         # エラーが出たとき5回トライする
         # 5回トライしてエラーが出たら諦める
 
@@ -119,19 +112,27 @@ class PomodoroTimerCog(commands.Cog):
             except Exception:
                 await asyncio.sleep(1)
 
-        debug_message += f"\n\n{index=}"
-        debug_message += f"\n{category=}"
-        debug_message += f"\n{voice_id=}"
-        debug_message += f"\n\n{now=}"
-
-        await self.send_debug(debug_message)
-
         if prm["is_update_latest_time"]:
             self.latest_time = utils.utcnow()
 
         # 現在のモードを次のモードに変更する
         # exp: before_work_time -> work_time
         self.now_mode = prm["next_mode"]
+
+        # Downloadクラスから対象のダウンロードメソッドを取得する
+        # exp: work_time -> Download.work_time を取得
+        nextdownload = getattr(self.pomo.download, self.now_mode)
+        index, category, voice_id = await nextdownload(self.pomo.timekeeper)
+
+        debug_message = "次回ダウンロードファイル\n"
+        debug_message += prm["debug_message"]
+
+        debug_message += f"\n\n{index=}"
+        debug_message += f"\n{category=}"
+        debug_message += f"\n{voice_id=}"
+        debug_message += f"\n\n{now=}"
+
+        await self.send_debug(debug_message)
 
     async def _on_join(self, before: VoiceState, after: VoiceState):
         # ミュート切替、画面共有切替等でも発火するので
@@ -201,6 +202,7 @@ class PomodoroTimerCog(commands.Cog):
         self.latest_time = utils.utcnow()
         self.now_mode = "work_time"
         await self.pomo.download.join_member_voice(self.pomo.timekeeper)
+        await self.pomo.download.work_time(self.pomo.timekeeper)
 
     @commands.Cog.listener()
     async def on_voice_state_update(
