@@ -146,6 +146,7 @@ class PomodoroTimerCog(commands.Cog):
         nextdownload = getattr(self.pomo.download, self.now_mode)
         await nextdownload(self.pomo.timekeeper)
 
+        prm = self.voice_info.model_dump()[self.now_mode]
         e = Embed(
             title="Download",
             description=prm["download_debug_message"],
