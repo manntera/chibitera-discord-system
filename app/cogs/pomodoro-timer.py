@@ -54,7 +54,6 @@ class PomodoroTimerCog(commands.Cog):
         self.bot.add_view(self.admin_panel_view)
 
         self.voice_info = VoiceInfos()
-        self.speak.start()
 
     async def cog_unload(self) -> None:
         self.speak.cancel()
@@ -78,6 +77,21 @@ class PomodoroTimerCog(commands.Cog):
         )
 
         await debug_channel.send(embeds=[e])
+        return None
+
+    async def send_debug_embed(self, embed: Embed) -> None:
+        """
+        デバッグ時にメッセージを送信する
+        """
+        if not self.bot.is_debug_mode:
+            return
+
+        debug_channel = self.bot.get_channel(POMO_DEBUG_CHANNEL_ID)
+
+        if not isinstance(debug_channel, TextChannel):
+            return None
+
+        await debug_channel.send(embeds=[embed])
         return None
 
     @tasks.loop(seconds=10)
@@ -108,6 +122,14 @@ class PomodoroTimerCog(commands.Cog):
             try:
                 play = getattr(self.play, self.now_mode)
                 await play()
+
+                e = Embed(
+                    title="Play",
+                    description=prm["play_debug_message"],
+                    color=Color.from_str("#85d0f3"),
+                )
+                await self.send_debug_embed(e)
+
                 break
             except Exception:
                 await asyncio.sleep(1)
@@ -122,17 +144,15 @@ class PomodoroTimerCog(commands.Cog):
         # Downloadクラスから対象のダウンロードメソッドを取得する
         # exp: work_time -> Download.work_time を取得
         nextdownload = getattr(self.pomo.download, self.now_mode)
-        index, category, voice_id = await nextdownload(self.pomo.timekeeper)
+        await nextdownload(self.pomo.timekeeper)
 
-        debug_message = "次回ダウンロードファイル\n"
-        debug_message += prm["debug_message"]
-
-        debug_message += f"\n\n{index=}"
-        debug_message += f"\n{category=}"
-        debug_message += f"\n{voice_id=}"
-        debug_message += f"\n\n{now=}"
-
-        await self.send_debug(debug_message)
+        e = Embed(
+            title="Download",
+            description=prm["download_debug_message"],
+            color=Color.yellow(),
+            timestamp=utils.utcnow() + timedelta(hours=9),
+        )
+        await self.send_debug_embed(e)
 
     async def _on_join(self, before: VoiceState, after: VoiceState):
         # ミュート切替、画面共有切替等でも発火するので
@@ -194,15 +214,47 @@ class PomodoroTimerCog(commands.Cog):
         # 初回挨拶DL・再生
 
         await self.pomo.download.greeting(self.pomo.timekeeper)
+
+        e = Embed(
+            title="Download",
+            description="挨拶ボイスDL完了",
+            color=Color.yellow(),
+            timestamp=utils.utcnow() + timedelta(hours=9),
+        )
+        await self.send_debug_embed(e)
+
         await self.play.greeting()
+        e = Embed(
+            title="Play",
+            description="挨拶ボイスを再生完了",
+            color=Color.from_str("#85d0f3"),
+            timestamp=utils.utcnow() + timedelta(hours=9),
+        )
+        await self.send_debug_embed(e)
 
         # while self.vclient.is_playing():
         #     await asyncio.sleep(1)
 
+        self.speak.start()
         self.latest_time = utils.utcnow()
         self.now_mode = "work_time"
         await self.pomo.download.join_member_voice(self.pomo.timekeeper)
+        e = Embed(
+            title="Download",
+            description="二人目以降入室ボイスDL完了",
+            color=Color.yellow(),
+            timestamp=utils.utcnow() + timedelta(hours=9),
+        )
+        await self.send_debug_embed(e)
+
         await self.pomo.download.work_time(self.pomo.timekeeper)
+        e = Embed(
+            title="Download",
+            description="作業終了ボイスDL完了",
+            color=Color.yellow(),
+            timestamp=utils.utcnow() + timedelta(hours=9),
+        )
+        await self.send_debug_embed(e)
 
     @commands.Cog.listener()
     async def on_voice_state_update(
@@ -308,9 +360,6 @@ class PomodoroTimerCog(commands.Cog):
     @commands.command(name="退出")
     async def disconnect(self, ctx: commands.Context):
         if not ctx.guild:
-            return
-
-        if not ctx.guild.owner:
             return
 
         if ctx.author.id not in [ctx.guild.owner.id, self.bot.owner_id]:

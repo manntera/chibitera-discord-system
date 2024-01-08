@@ -38,39 +38,44 @@ class VoiceInfo(BaseModel):
     desc: str = Field(description="このモードの説明")
     timedelta: dict = Field(description="再生する時間のdict")
     next_mode: str = Field(description="次のモード")
-    debug_message: str = Field("デバッグ時のメッセージ")
+    download_debug_message: str = Field("DL時のデバッグメッセージ")
+    play_debug_message: str = Field("再生時のデバッグ時のメッセージ")
     is_update_latest_time: bool = Field(description="最後に再生した時間を更新するかしないか")
 
 
 BEFORE_WORK_INFO = VoiceInfo(
     desc="作業終了前",
-    timedelta={"minutes": 2},  # 42
+    timedelta={"minutes": 42},  # 42
     next_mode="work_time",
-    debug_message="作業終了予告ボイス再生完了",
+    download_debug_message="作業終了前ボイスDL完了",
+    play_debug_message="作業終了前ボイス再生完了",
     is_update_latest_time=False,
 )
 
 WORK_INFO = VoiceInfo(
     desc="作業終了",
-    timedelta={"minutes": 2},  # 45
+    timedelta={"minutes": 45},  # 45
     next_mode="break_time",  # before_break_time
-    debug_message="作業終了ボイス再生完了",
+    download_debug_message="作業終了ボイスDL完了",
+    play_debug_message="作業終了ボイス再生完了",
     is_update_latest_time=True,
 )
 
 BEFORE_BREAK_INFO = VoiceInfo(
     desc="作業終了前",
-    timedelta={"minutes": 2},  # 12
+    timedelta={"minutes": 12},  # 12
     next_mode="break_time",
-    debug_message="休憩終了予告ボイス再生完了",
+    download_debug_message="休憩終了前ボイスDL完了",
+    play_debug_message="休憩終了前ボイス再生完了",
     is_update_latest_time=False,
 )
 
 BREAK_INFO = VoiceInfo(
     desc="作業終了",
-    timedelta={"minutes": 2},  # 15
+    timedelta={"minutes": 15},  # 15
     next_mode="work_time",  # before_work_time
-    debug_message="休憩終了ボイス再生完了",
+    download_debug_message="休憩終了ボイスDL完了",
+    play_debug_message="休憩終了ボイス再生完了",
     is_update_latest_time=True,
 )
 
