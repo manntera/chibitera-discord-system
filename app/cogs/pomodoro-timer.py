@@ -150,7 +150,7 @@ class PomodoroTimerCog(commands.Cog):
             title="Download",
             description=prm["download_debug_message"],
             color=Color.yellow(),
-            timestamp=utils.utcnow() + timedelta(hours=9),
+            timestamp=utils.utcnow(),
         )
         await self.send_debug_embed(e)
 
@@ -219,7 +219,7 @@ class PomodoroTimerCog(commands.Cog):
             title="Download",
             description="挨拶ボイスDL完了",
             color=Color.yellow(),
-            timestamp=utils.utcnow() + timedelta(hours=9),
+            timestamp=utils.utcnow(),
         )
         await self.send_debug_embed(e)
 
@@ -228,7 +228,7 @@ class PomodoroTimerCog(commands.Cog):
             title="Play",
             description="挨拶ボイスを再生完了",
             color=Color.from_str("#85d0f3"),
-            timestamp=utils.utcnow() + timedelta(hours=9),
+            timestamp=utils.utcnow(),
         )
         await self.send_debug_embed(e)
 
@@ -243,7 +243,7 @@ class PomodoroTimerCog(commands.Cog):
             title="Download",
             description="二人目以降入室ボイスDL完了",
             color=Color.yellow(),
-            timestamp=utils.utcnow() + timedelta(hours=9),
+            timestamp=utils.utcnow(),
         )
         await self.send_debug_embed(e)
 
@@ -252,7 +252,6 @@ class PomodoroTimerCog(commands.Cog):
             title="Download",
             description="作業終了ボイスDL完了",
             color=Color.yellow(),
-            timestamp=utils.utcnow() + timedelta(hours=9),
         )
         await self.send_debug_embed(e)
 
@@ -360,6 +359,9 @@ class PomodoroTimerCog(commands.Cog):
     @commands.command(name="退出")
     async def disconnect(self, ctx: commands.Context):
         if not ctx.guild:
+            return
+
+        if not ctx.guild.owner:
             return
 
         if ctx.author.id not in [ctx.guild.owner.id, self.bot.owner_id]:
