@@ -1,7 +1,7 @@
 from config import BUCKET_NAME
 from google.cloud import storage
 
-from .download import *
+from .download import Download
 from .error import *
 from .play import Play
 from .timekepper import Timekeeper

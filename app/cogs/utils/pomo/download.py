@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import asyncio
+import glob
 import logging
 import os
 import random
 import shutil
+from typing import TYPE_CHECKING
 
 import discord
 from config import (
@@ -20,38 +22,93 @@ from google.cloud import storage
 
 from .error import NotFoundVoice
 from .timekepper import Timekeeper
-from .types import NowVoiceInfo, TActor
+from .types import NowVoiceInfo
+
+if TYPE_CHECKING:
+    from main import Main
 
 __all__ = ("Download",)
 
 
 class Download:
-    def __init__(self, bot, bucket: storage.Bucket):
+    def __init__(self, bot: Main, bucket: storage.Bucket):
         self.bot = bot
         self.bucket = bucket
+        self.events = Events()
+        self.send = Send(bot)
 
-    async def all(self, timekeeper: TActor):
+    def get_filename(self, category_id: str, is_random: bool = True) -> str:
+        files = glob.glob(f"voices/{category_id}/*.mp3")
+
+        if is_random:
+            return random.choice(files)
+        return files[0]
+
+    async def all(
+        self,
+        timekeeper: Timekeeper,
+        ignore_categories: tuple[str, ...] = (),
+        only_categories: tuple[str, ...] = (),
+    ):
         """タイムキーパーのVoiceFileを全てDLする"""
+        self.events.is_all_download.clear()
 
-        timekeeper_name = timekeeper["actor_name"]
+        timekeeper_name = timekeeper.name
 
-        voice_list = timekeeper["voice_list"]
-        files: list[storage.Blob] = self.bucket.list_blobs(prefix=timekeeper_name)
+        if not timekeeper_name or not timekeeper.info:
+            return
+
+        if ignore_categories and only_categories:
+            raise Exception("除外カテゴリーとカテゴリー指定が両立してます。どちらかにしてください.")
+
+        voice_list = timekeeper.info["voice_list"]
+        prefix = f"actors/{timekeeper_name}"
+        print("======== DOWNLOAD START =============")
+        print(f"         {prefix}  ")
+        files: list[storage.Blob] = self.bucket.list_blobs(prefix=prefix)
+
+        def get_category(file_name: str) -> str | None:
+            for data in voice_list:
+                if not data.get("id_list", []):
+                    continue
+
+                if file_name in data["id_list"]:
+                    return data["category"]
+            return None
+
+        if not os.path.exists("voices"):
+            os.makedirs("voices")
 
         for _file in files:
             if not _file.name:
                 continue
 
             _file_name = _file.name.split("/")[-1]  # フォルダー名を除外
-            file_name = _file.name.split(".")[0]  # 拡張子を除外 voice_idのみを取得
+            file_name = _file_name.split(".")[0]  # 拡張子を除外 voice_idのみを取得
 
-            if _file_name.endswith(".wav"):
+            if file_name.endswith(".wav"):
                 continue
 
+            if not (category := get_category(file_name)):
+                continue
+
+            if ignore_categories:
+                if category in ignore_categories:
+                    continue
+            if only_categories:
+                if category not in only_categories:
+                    continue
+
+            if not os.path.exists(f"voices/{category}"):
+                os.mkdir(f"voices/{category}")
+
             await asyncio.to_thread(
-                _file.download_to_filename, filename=f"voices/{file_name}.wav"
+                _file.download_to_filename,
+                filename=f"voices/{category}/{file_name}.mp3",
             )
-            logging.info("download: ", file_name)
+            print("download: ", category, " - ", file_name)
+
+        self.events.is_all_download.set()
 
         return voice_list
 
@@ -148,6 +205,7 @@ class Download:
         -------
         None
         """
+        self.events.is_greeting_download.clear()
 
         return await self.voice_file(GREETING_INDEX, timekeeper)
 
@@ -224,7 +282,63 @@ class Download:
         None
         """
 
+        self.events.is_join_member_download.clear()
+
         return await self.voice_file(JOIN_MEMBER_INDEX, timekeeper)
 
     def clear(self):
         shutil.rmtree("voices/")
+
+
+class Events:
+    def __init__(self):
+        self.is_all_download = asyncio.Event()
+        self.is_greeting_download = asyncio.Event()
+        self.is_join_member_download = asyncio.Event()
+
+    async def wait_all_download(self) -> None:
+        await self.is_all_download.wait()
+
+    async def wait_greeting_download(self) -> None:
+        await self.is_greeting_download.wait()
+
+    async def wait_join_member_download(self) -> None:
+        await self.is_join_member_download.wait()
+
+
+class Send:
+    def __init__(self, bot: Main):
+        self.bot = bot
+
+    def get_debug_channel(self, channel_id: int) -> discord.TextChannel | None:
+        if not self.bot.is_debug_mode:
+            return None
+
+        channel = self.bot.get_channel(channel_id)
+
+        if not isinstance(channel, discord.TextChannel):
+            return None
+
+        return channel
+
+    async def download_embed(self, debug_channel_id: int, voice_type: str) -> None:
+        e = discord.Embed(
+            title="Download",
+            description=f"{voice_type}DL完了",
+            color=discord.Color.yellow(),
+            timestamp=discord.utils.utcnow(),
+        )
+        debug_channel = self.get_debug_channel(debug_channel_id)
+        if debug_channel:
+            await debug_channel.send(embeds=[e])
+
+    async def play_embed(self, debug_channel_id: int, voice_type: str) -> None:
+        e = discord.Embed(
+            title="Play",
+            description=f"{voice_type}再生完了",
+            color=discord.Color.from_str("#85d0f3"),
+            timestamp=discord.utils.utcnow(),
+        )
+        debug_channel = self.get_debug_channel(debug_channel_id)
+        if debug_channel:
+            await debug_channel.send(embeds=[e])

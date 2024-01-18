@@ -34,10 +34,20 @@ COMPLETE_OF_BREAK_INDEX = 4
 JOIN_MEMBER_INDEX = 5
 
 
+# カテゴリー
+GREETING_CATEGORY = "001"
+BEFORE_COMPLETE_OF_WORK_CATEGORY = "002"
+COMPLETE_OF_WORK_CATEGORY = "003"
+BEFORE_COMPLETE_OF_BREAK_CATEGORY = "004"
+COMPLETE_OF_BREAK_CATEGORY = "005"
+JOIN_MEMBER_CATEGORY = "006"
+
+
 class VoiceInfo(BaseModel):
     desc: str = Field(description="このモードの説明")
     timedelta: dict = Field(description="再生する時間のdict")
     next_mode: str = Field(description="次のモード")
+    category: str = Field(description="カテゴリー")
     download_debug_message: str = Field("DL時のデバッグメッセージ")
     play_debug_message: str = Field("再生時のデバッグ時のメッセージ")
     is_update_latest_time: bool = Field(description="最後に再生した時間を更新するかしないか")
@@ -45,8 +55,9 @@ class VoiceInfo(BaseModel):
 
 BEFORE_WORK_INFO = VoiceInfo(
     desc="作業終了前",
-    timedelta={"minutes": 42},  # 42
+    timedelta={"minutes": 2},  # 42
     next_mode="work_time",
+    category=BEFORE_COMPLETE_OF_WORK_CATEGORY,
     download_debug_message="作業終了前ボイスDL完了",
     play_debug_message="作業終了前ボイス再生完了",
     is_update_latest_time=False,
@@ -56,6 +67,7 @@ WORK_INFO = VoiceInfo(
     desc="作業終了",
     timedelta={"minutes": 45},  # 45
     next_mode="break_time",  # before_break_time
+    category=COMPLETE_OF_WORK_CATEGORY,
     download_debug_message="作業終了ボイスDL完了",
     play_debug_message="作業終了ボイス再生完了",
     is_update_latest_time=True,
@@ -63,8 +75,9 @@ WORK_INFO = VoiceInfo(
 
 BEFORE_BREAK_INFO = VoiceInfo(
     desc="作業終了前",
-    timedelta={"minutes": 12},  # 12
+    timedelta={"minutes": 2},  # 12
     next_mode="break_time",
+    category=BEFORE_COMPLETE_OF_BREAK_CATEGORY,
     download_debug_message="休憩終了前ボイスDL完了",
     play_debug_message="休憩終了前ボイス再生完了",
     is_update_latest_time=False,
@@ -74,6 +87,7 @@ BREAK_INFO = VoiceInfo(
     desc="作業終了",
     timedelta={"minutes": 15},  # 15
     next_mode="work_time",  # before_work_time
+    category=COMPLETE_OF_BREAK_CATEGORY,
     download_debug_message="休憩終了ボイスDL完了",
     play_debug_message="休憩終了ボイス再生完了",
     is_update_latest_time=True,
