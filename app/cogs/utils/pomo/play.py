@@ -15,26 +15,26 @@ class Play(VoiceClient):
 
         self.bot = bot
 
-    async def __play(self, category_id: int):
+    async def __play(self, filename: str):
         while self.is_playing():
             await asyncio.sleep(1)
 
-        self.play(FFmpegPCMAudio(f"voices/{category_id:03}.wav"))
+        self.play(FFmpegPCMAudio(filename))
 
-    async def greeting(self):
-        await self.__play(1)
+    async def greeting(self, filename: str):
+        await self.__play(filename)
 
-    async def before_work_time(self):
-        await self.__play(2)
+    async def before_work_time(self, filename: str):
+        await self.__play(filename)
 
-    async def work_time(self):
-        await self.__play(3)
+    async def work_time(self, filename: str):
+        await self.__play(filename)
 
-    async def before_break_time(self):
-        await self.__play(4)
+    async def before_break_time(self, filename: str):
+        await self.__play(filename)
 
-    async def break_time(self):
-        await self.__play(5)
+    async def break_time(self, filename: str):
+        await self.__play(filename)
 
-    async def join_member(self):
-        await self.__play(6)
+    async def join_member(self, filename: str) -> None:
+        await self.__play(filename)

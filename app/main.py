@@ -15,7 +15,7 @@ cogs = ["pomodoro-timer"]
 class Main(commands.Bot):
     def __init__(self):
         super().__init__(command_prefix="ch!", intents=intents)
-        
+
         sentry_sdk.init(
             dsn=SENTRY_SDK,
             integrations=[
@@ -32,7 +32,7 @@ class Main(commands.Bot):
             module = f"cogs.{cog}"
             await self.load_extension(module)
             print(module, "読み込み完了")
-        
+
         # self.userがオプショナルになってたので
         # self.userがNoneの場合は起動中止
         if not self.user:
