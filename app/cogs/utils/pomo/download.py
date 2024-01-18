@@ -86,7 +86,7 @@ class Download:
             _file_name = _file.name.split("/")[-1]  # フォルダー名を除外
             file_name = _file_name.split(".")[0]  # 拡張子を除外 voice_idのみを取得
 
-            if file_name.endswith(".wav"):
+            if file_name.endswith(".mp3"):
                 continue
 
             if not (category := get_category(file_name)):
