@@ -65,7 +65,7 @@ BEFORE_WORK_INFO = VoiceInfo(
 
 WORK_INFO = VoiceInfo(
     desc="作業終了",
-    timedelta={"minutes": 45},  # 45
+    timedelta={"minutes": 25},  # 45
     next_mode="break_time",  # before_break_time
     category=COMPLETE_OF_WORK_CATEGORY,
     download_debug_message="作業終了ボイスDL完了",
@@ -85,7 +85,7 @@ BEFORE_BREAK_INFO = VoiceInfo(
 
 BREAK_INFO = VoiceInfo(
     desc="作業終了",
-    timedelta={"minutes": 15},  # 15
+    timedelta={"minutes": 5},  # 15
     next_mode="work_time",  # before_work_time
     category=COMPLETE_OF_BREAK_CATEGORY,
     download_debug_message="休憩終了ボイスDL完了",
