@@ -145,6 +145,7 @@ class PomodoroTimerCog(commands.Cog):
 
         if prm["is_update_latest_time"]:
             self.latest_time = utils.utcnow()
+            await self.play.guild.me.edit(nick=f"{self.now_mode_to_jp[self.now_mode]}中だよ～")
 
         # 現在のモードを次のモードに変更する
         # exp: before_work_time -> work_time
@@ -226,7 +227,15 @@ class PomodoroTimerCog(commands.Cog):
         filename = self.pomo.download.get_filename(config.GREETING_CATEGORY)
         await self.play.greeting(filename)
         await self.pomo.download.send.play_embed(POMO_DEBUG_CHANNEL_ID, "初回挨拶")
-
+        
+        async def edit_nick():
+            if not self.play:
+                return
+            await self.play.wait_play()
+            await member.guild.me.edit(nick="作業中だよ～")
+            
+        self.bot.loop.create_task(edit_nick())
+        
         await self.pomo.download.all(
             timekeeper=self.pomo.timekeeper,
             ignore_categories=(config.GREETING_CATEGORY,),
@@ -340,12 +349,14 @@ class PomodoroTimerCog(commands.Cog):
             return
 
         await self.play.disconnect(force=True)
+        await ctx.guild.me.edit(nick="ちびてらちゃん")
 
         self.play = None
         self.latest_time = None
         self.now_mode = None
         self.pomo.clear()
         self.speak.cancel()
+        await ctx.message.delete()
 
 
 class MockVoiceChannel(BaseModel):
