@@ -143,13 +143,14 @@ class PomodoroTimerCog(commands.Cog):
             except Exception:
                 await asyncio.sleep(1)
 
+        # 現在のモードを次のモードに変更する
+        # exp: before_work_time -> work_time
+        self.now_mode = prm["next_mode"]
+
         if prm["is_update_latest_time"]:
             self.latest_time = utils.utcnow()
             await self.play.guild.me.edit(nick=f"{self.now_mode_to_jp[self.now_mode]}中だよ～")
 
-        # 現在のモードを次のモードに変更する
-        # exp: before_work_time -> work_time
-        self.now_mode = prm["next_mode"]
 
     @commands.Cog.listener()
     async def on_voice_state_update(
@@ -349,14 +350,13 @@ class PomodoroTimerCog(commands.Cog):
             return
 
         await self.play.disconnect(force=True)
-        await ctx.guild.me.edit(nick="ちびてらちゃん")
 
         self.play = None
         self.latest_time = None
         self.now_mode = None
         self.pomo.clear()
-        self.speak.cancel()
-        await ctx.message.delete()
+        self.speak.cancel(
+        )
 
 
 class MockVoiceChannel(BaseModel):
