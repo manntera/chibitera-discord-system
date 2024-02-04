@@ -16,7 +16,7 @@ DEBUG_MODE: bool = bool(os.environ.get("DEBUG_MODE", 0))
 
 # ファイルパス関連
 
-BUCKET_NAME = "pomodorotimer"
+BUCKET_NAME = "pomodoro-voice"
 PATH_ACTORLIST_JSON = "actors/actorlist.json"
 PATH_ACTOR_JSON = "actors/{timekeeper_name}/actor.json"
 PATH_ACTOR_VOICE_FILE_NAME = (
