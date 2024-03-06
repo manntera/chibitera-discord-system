@@ -32,6 +32,8 @@ class Main(commands.Bot):
             module = f"cogs.{cog}"
             await self.load_extension(module)
             print(module, "読み込み完了")
+        
+        await self.tree.sync()
 
         # self.userがオプショナルになってたので
         # self.userがNoneの場合は起動中止
