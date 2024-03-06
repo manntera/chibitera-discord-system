@@ -20,6 +20,7 @@ from discord import (
     Member,
     TextChannel,
     VoiceState,
+    app_commands,
     ui,
     utils,
 )
@@ -33,6 +34,8 @@ from .utils.pomo import error as PomoERROR
 
 if TYPE_CHECKING:
     from main import Main
+    
+VOICE_INFOS = VoiceInfos()
 
 
 class PomodoroTimerCog(commands.Cog):
@@ -59,8 +62,6 @@ class PomodoroTimerCog(commands.Cog):
         self.admin_panel_view = AdminPanelView()
 
         self.bot.add_view(self.admin_panel_view)
-
-        self.voice_info = VoiceInfos()
 
     async def cog_unload(self) -> None:
         self.speak.cancel()
@@ -117,7 +118,7 @@ class PomodoroTimerCog(commands.Cog):
 
         # VoiceInfoモデルをdictに変換し、現在のモードのinfoを取得する
 
-        prm = self.voice_info.model_dump()[self.now_mode]
+        prm = VOICE_INFOS.model_dump()[self.now_mode]
 
         if self.latest_time + timedelta(**prm["timedelta"]) >= now:
             return
@@ -205,6 +206,9 @@ class PomodoroTimerCog(commands.Cog):
                 await guild.voice_client.disconnect(force=True)
             except Exception:
                 raise PomoERROR.FailedDisConnect()
+            
+        VOICE_INFOS.break_time.timedelta["minutes"] = 5
+        VOICE_INFOS.work_time.timedelta["minutes"] = 25
 
         self.play = await after.channel.connect(cls=PomoPlay)  # type: ignore
 
@@ -322,6 +326,8 @@ class PomodoroTimerCog(commands.Cog):
         self.now_mode = None
         self.pomo.clear()
         self.speak.cancel()
+        VOICE_INFOS.break_time.timedelta["minutes"] = 5
+        VOICE_INFOS.work_time.timedelta["minutes"] = 25
 
     @commands.command(name="デバッグ切替")
     @excepter
@@ -358,6 +364,20 @@ class PomodoroTimerCog(commands.Cog):
         self.speak.cancel(
         )
 
+class PomodoroTimerSettingCog(commands.Cog):
+    def __init__(self, bot: Main):
+        self.bot = bot
+        
+    
+    @commands.hybrid_command(name="時間変更")
+    @app_commands.rename(_break="休憩時間", _work="作業時間")
+    @app_commands.describe(_break="休憩時間を分単位で指定してください。",_work="作業時間を分単位で指定してください。")
+    async def change_time(self, ctx:commands.Context, _work: int, _break: int):
+        VOICE_INFOS.break_time.timedelta["minutes"] = _break
+        VOICE_INFOS.work_time.timedelta["minutes"] = _work
+        
+        await ctx.send(f"下の通りに設定しました。\n- 作業時間: {_work}分\n- 休憩時間: {_break}分")
+
 
 class MockVoiceChannel(BaseModel):
     id: int
@@ -386,3 +406,4 @@ class AdminPanelView(ui.View):
 
 async def setup(bot: Main):
     await bot.add_cog(PomodoroTimerCog(bot))
+    await bot.add_cog(PomodoroTimerSettingCog(bot))
