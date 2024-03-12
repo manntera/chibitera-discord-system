@@ -5,3 +5,5 @@ discord.py[voice]
 google-api-python-client
 google-cloud-storage
 sentry-sdk
+pydantic
+aiohttp==3.9.3
