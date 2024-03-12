@@ -9,7 +9,7 @@ from sentry_sdk.integrations.asyncio import AsyncioIntegration
 intents = Intents.default()
 intents.message_content = True
 
-cogs = ["pomodoro-timer"]
+cogs = ["pomodoro-timer", "auth_system"]
 
 
 class Main(commands.Bot):
@@ -32,7 +32,7 @@ class Main(commands.Bot):
             module = f"cogs.{cog}"
             await self.load_extension(module)
             print(module, "読み込み完了")
-        
+
         await self.tree.sync()
 
         # self.userがオプショナルになってたので
