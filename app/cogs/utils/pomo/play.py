@@ -15,10 +15,10 @@ class Play(VoiceClient):
 
         self.bot = bot
         self.played = asyncio.Event()
-        
+
     async def wait_play(self) -> None:
         await self.played.wait()
-        
+
     def setplayed(self, _) -> None:
         self.played.set()
 
@@ -27,7 +27,10 @@ class Play(VoiceClient):
         while self.is_playing():
             await asyncio.sleep(1)
 
-        self.play(FFmpegPCMAudio(filename), after=self.setplayed)
+        source = FFmpegPCMAudio(filename)
+        source.read()
+
+        self.play(source, after=self.setplayed)
 
     async def greeting(self, filename: str):
         await self.__play(filename)
